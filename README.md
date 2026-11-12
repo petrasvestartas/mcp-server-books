@@ -49,20 +49,19 @@ Test:
 
 ## Cloudflare R2
 
-Cloudflare dashboard, R2, your bucket (`B` below), Manage API tokens, create token "Object Read & Write" for this bucket.
+Cloudflare dashboard, R2, your bucket, Manage API tokens, create token "Object Read & Write" for this bucket.
 Gives key id (32 hex) and secret (64 hex). Endpoint: `https://<account id>.r2.cloudflarestorage.com`.
 
     aws configure --profile r2-books          # key id, secret, region: auto, output: json
-    B=<bucket>
     E=https://<account id>.r2.cloudflarestorage.com
-    aws --profile r2-books --region auto --endpoint-url $E s3 ls s3://$B/
+    aws --profile r2-books --region auto --endpoint-url $E s3 ls s3://brg-books/
 
 `SignatureDoesNotMatch` = secret pasted wrong.
 
 Upload (preview first, never deletes):
 
-    bash tools/upload-books.sh $B $E out/<book>
-    bash tools/upload-books.sh $B $E out/<book> --upload
+    bash tools/upload-books.sh brg-books $E out/<book>
+    bash tools/upload-books.sh brg-books $E out/<book> --upload
 
 Public read URL (default of server, change with `BOOKS_URL`):
 
@@ -74,14 +73,14 @@ Website reads R2. Book visible only when `done` in R2 `PROCESSED.md`.
 
 Need push access to the website repo:
 
-    git clone git@github.com:<org>/<website>.git ~/website
+    git clone git@github.com:BRG-teaching/Teaching.git ~/brg/code_teaching/Teaching
 
 After book upload:
 
     # add row "| `<book>/` | 2026-11-12 | done |" to PROCESSED.md, then
-    aws --profile r2-books --region auto --endpoint-url $E s3 cp PROCESSED.md s3://$B/PROCESSED.md
+    aws --profile r2-books --region auto --endpoint-url $E s3 cp PROCESSED.md s3://brg-books/PROCESSED.md
     bash tools/r2_library_map.sh --upload
-    cd ~/website && git commit --allow-empty -m "Pages: rebuild <book>" && git push
+    cd ~/brg/code_teaching/Teaching && git commit --allow-empty -m "Pages: rebuild <book>" && git push
 
 ## Workflow short
 
