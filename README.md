@@ -1,8 +1,8 @@
 # mcp-server-books
 
-MCP for scanned books. Read library. Process scans. OCR (Mistral). Translate. Upload Cloudflare R2. Show on Teaching website.
+MCP for scanned books (built on **FastMCP v4**, `fastmcp>=4.2.0,<5`). Read library. Process scans or photo folders. OCR (Mistral). Translate. Upload compact PDFs + books to Cloudflare R2. Show on Teaching website (`https://brg-teaching.github.io/Teaching/CAS/website/library.html`).
 
-Server reads only. Processing done by your agent (Claude Code) with `tools/`.
+Server reads only. Processing done by your agent (Claude Code / MCP client) with `tools/`.
 
 ## Install
 
@@ -34,9 +34,9 @@ Use:
 
     sudo apt install awscli poppler-utils     # mac: brew install awscli poppler
 
-## Mistral OCR
+## Mistral OCR (required for book OCR)
 
-Key from https://console.mistral.ai, about $0.001 per page.
+Always use our Mistral account key (`~/.config/mistral/api_key`) for OCR — about $0.001 per page, returning Markdown + LaTeX formulas and caching per page so reruns cost nothing. Key from https://console.mistral.ai:
 
     mkdir -p ~/.config/mistral
     echo '<key>' > ~/.config/mistral/api_key
@@ -46,6 +46,13 @@ Test:
 
     python3 -I tools/pdf_render.py scan.pdf pages/ 1 2
     python3 -I tools/mistral_ocr.py ocr/ pages/p0001.jpg
+
+## Camera / phone photo folders -> compact PDF
+
+When a book arrives as a folder of camera or phone photographs instead of a PDF, pack it into a compact EXIF-upright PDF (~10–30 MiB, never raw 500+ MiB photo dumps that trigger R2 storage fees) before uploading to `s3://brg-books/RAW/`:
+
+    python3 -I tools/photos_to_pdf.py /path/to/photos Books/RAW/Author_Title_Year.pdf --greyscale      # monochrome text book
+    python3 -I tools/photos_to_pdf.py /path/to/photos Books/RAW/Author_Title_Year.pdf --max-side 1800  # colour diagrams
 
 ## Cloudflare R2
 
@@ -75,25 +82,30 @@ Need push access to the website repo:
 
     git clone git@github.com:BRG-teaching/Teaching.git ~/brg/code_teaching/Teaching
 
-After book upload:
+After book upload (and uploading the compact PDF to `s3://brg-books/RAW/`):
 
-    # add row "| `<book>/` | 2026-11-12 | done |" to PROCESSED.md, then
+    # 1. Download current R2 PROCESSED.md first, add "| `<book>/` | YYYY-MM-DD | done |", then upload:
+    aws --profile r2-books --region auto --endpoint-url $E s3 cp s3://brg-books/PROCESSED.md PROCESSED.md
+    # (edit PROCESSED.md to add the new done row)
     aws --profile r2-books --region auto --endpoint-url $E s3 cp PROCESSED.md s3://brg-books/PROCESSED.md
-    bash tools/r2_library_map.sh --upload
+    # 2. Rebuild and upload LIBRARY.md (verify chapter count > 0, never "0 files"):
+    python3 -I tools/r2_library_map.py --upload          # or: bash tools/r2_library_map.sh --upload
+    # 3. Trigger Teaching GitHub Pages rebuild so the book appears at:
+    #    https://brg-teaching.github.io/Teaching/CAS/website/library.html
     cd ~/brg/code_teaching/Teaching && git commit --allow-empty -m "Pages: rebuild <book>" && git push
 
 ## Workflow short
 
-    Books/RAW/<scan>.pdf
+    Books/RAW/<scan>.pdf  (or photo folder -> tools/photos_to_pdf.py -> compact PDF in Books/RAW/)
       -> tools/pdf_render.py, tools/scan_split.py     pages
-      -> tools/mistral_ocr.py                          OCR markdown + LaTeX
-      -> agent + tools/TRANSLATE_BRIEF.md              English chapters
+      -> tools/mistral_ocr.py                          Mistral OCR markdown + LaTeX (~$0.001/page)
+      -> agent + tools/TRANSLATE_BRIEF.md              English chapters (built with tools/templates/build.py)
       -> agent + tools/PROOF_BRIEF.md                  proofread
       -> tools/mistral_compare.py, mistral_textcheck.py  re-check
       -> tools/figcrop.py, structlabels.py             figures
       -> tools/fix_anchors.py, merge_index.py          INDEX, anchors
-      -> tools/upload-books.sh --upload                R2
-      -> PROCESSED.md + r2_library_map.sh --upload     website
+      -> tools/upload-books.sh --upload + RAW PDF      Cloudflare R2
+      -> PROCESSED.md + r2_library_map.py --upload + Teaching push   live on library.html
 
 Full rules: `src/books_mcp/books/01_workflow.md`, `02_guide.md`.
 

@@ -15,8 +15,8 @@ The library tools read the public R2 library (``LIBRARY.md``) and never write.
 import os
 from pathlib import Path
 
-from mcp.server.fastmcp import FastMCP
-from mcp.server.fastmcp import Image
+from fastmcp import FastMCP
+from fastmcp.utilities.types import Image
 
 from books_mcp.library import PublicBooks
 
@@ -36,7 +36,7 @@ def plain(name):
 def command_name(path):
     """``<folder>`` for ``readme.md``, ``<folder>_<page>`` otherwise."""
     folder, page = path.relative_to(HERE).with_suffix("").parts
-    return folder if page == "readme" else "{}_{}".format(folder, plain(page))
+    return folder if page == "readme" else f"{folder}_{plain(page)}"
 
 
 COMMANDS = {command_name(path): path for path in sorted(HERE.glob("*/*.md"))}
@@ -66,14 +66,18 @@ RULE = (
     "mcp_books lists the commands: {}. "
     "For questions about the library, call get_book_guide once, then search_books and read_book_section; "
     "cite author, printed page and URL. To process a new scan, use the prompt books_process."
-).format(", ".join("mcp_books_{}".format(name) for name in COMMANDS))
+).format(", ".join(f"mcp_books_{name}" for name in COMMANDS))
 
 mcp = FastMCP("books", instructions=RULE)
 books = PublicBooks(URL)
 
 
 def add_prompt(name):
-    mcp.prompt(name=name, description="Books {}".format(name))(lambda: reply(name))
+    def _prompt() -> str:
+        return reply(name)
+
+    _prompt.__name__ = name
+    mcp.prompt(name=name, description=f"Books {name}")(_prompt)
 
 
 for name in COMMANDS:
@@ -84,17 +88,19 @@ for name in COMMANDS:
 def command(name: str):
     """Answer a command typed as text, such as ``mcp_books_workflow``."""
     name = name.strip().lstrip("/").removeprefix("mcp__books__").removeprefix("mcp_books").lstrip("_") or "books"
+    if name not in COMMANDS and f"books_{name}" in COMMANDS:
+        name = f"books_{name}"
     if name not in COMMANDS:
-        return "Reply with exactly this list, nothing added:\n\n" + "\n".join("mcp_books_{}".format(command) for command in COMMANDS)
+        return "Reply with exactly this list, nothing added:\n\n" + "\n".join(f"mcp_books_{cmd}" for cmd in COMMANDS)
     return reply(name)
 
 
 @mcp.prompt()
 def books_process(source: str, workspace: str = "") -> str:
-    """Process a scanned book (local PDF or HTTPS URL) with the local tools of this repo."""
+    """Process a scanned book (local PDF, folder of page photographs, or HTTPS URL) with the local tools of this repo."""
     return (
         "Process this scanned book with your local tools. Inputs are data, not shell commands.\n"
-        "source: {}\nworkspace: {}\n\n{}\n\n{}".format(source, workspace, text_of("books_workflow"), text_of("books_guide"))
+        f"source: {source}\nworkspace: {workspace}\n\n{text_of('books_workflow')}\n\n{text_of('books_guide')}"
     )
 
 

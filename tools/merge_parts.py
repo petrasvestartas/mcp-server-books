@@ -11,9 +11,9 @@ def split(t):
     return "\n".join(lines).rstrip("\n"), ""
 bodies, defs = [], []
 for f in files:
-    b, df = split(f.read_text()); bodies.append(b); defs.append(df)
+    b, df = split(f.read_text(encoding="utf-8")); bodies.append(b); defs.append(df)
 out = "\n\n".join(bodies) + "\n\n" + "\n\n".join(x for x in defs if x) + "\n"
 (d / "parts").mkdir(exist_ok=True)
 for f in files: shutil.move(str(f), d / "parts" / f.name)
-(d / f"{stem}.md").write_text(out)
+(d / f"{stem}.md").write_text(out, encoding="utf-8")
 print("merged", [f.name for f in files], "->", stem + ".md")

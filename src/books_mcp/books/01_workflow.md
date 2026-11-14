@@ -1,21 +1,24 @@
 # Process a scanned book
 
-Input: a local PDF path or HTTPS URL supplied by the user.
+Input: a local PDF path, a local folder of page photographs, or an HTTPS URL supplied by the user.
 
 ## Start
 
-- Accept a quoted local PDF path or HTTPS URL. Ask for the source only if missing.
+- Accept a quoted local PDF path, local folder of page photographs, or HTTPS URL. Ask for the source only if missing.
 - Use `get_book_guide(include_library_map=false)` for conventions; without MCP,
   read `src/books_mcp/books/02_guide.md` from this checkout.
 - Find the existing Books workspace from the supplied path, `BRG_BOOKS_DIR`, or a
   sibling `Books/` directory. Otherwise create a separate local workspace beside
   the PDF, or ask for a location when the input is a URL. Keep PDFs outside this code repo.
 - The workspace `tools/` folder is this repo's `tools/` (symlink it: `ln -s <repo>/tools <Books>/tools`);
-  `tools/templates/` holds example per-book briefs and a PROCESSING.md from a finished book.
+  `tools/templates/` holds `build.py`, example per-book briefs, and a `PROCESSING.md` from a finished book.
 - Check PDF/image tooling and the workspace's trusted conversion scripts/briefs.
   If required tools are missing, report the exact missing dependency and complete
   any feasible scan/contents inspection; do not pretend conversion was completed.
-- Preserve the input PDF unchanged. Download remote PDFs into workspace `RAW/`.
+- Preserve the input source unchanged. Download remote PDFs into workspace `RAW/`.
+  When the input is a folder of camera/phone photographs, pack them into a **compact PDF** in `RAW/<Author_Title_Year>.pdf`
+  using `tools/photos_to_pdf.py` (`--max-side 1800 --quality 75`, plus `--greyscale` for monochrome books so a 200-page book
+  stays ~15–30 MiB and a 50-page colour book ~8–15 MiB — never upload multi-hundred-MB raw photo dumps to R2).
 - Infer title, author, source language, and a stable author-title folder ID from
   the scan. Default output to English. Ask only when identity or destination is ambiguous.
 
@@ -23,10 +26,11 @@ Input: a local PDF path or HTTPS URL supplied by the user.
 
 1. Check pages, scan quality, contents, and errata. Save scope/progress in the book's `PROCESSING.md`.
    Spread scans: `tools/scan_split.py` (check one spread's rotation first).
-   OCR: always `tools/mistral_ocr.py` (Markdown with LaTeX equations and equation numbers, about $0.001/page;
-   key in `~/.config/mistral/api_key`; only public-domain scans and BRG's own publications). Render pages first with
-   `tools/pdf_render.py` (200 dpi, `p####.jpg` = PDF page) and run several shards in parallel; the per-page cache means
-   a rerun never pays twice. Keep the cache until the book is published. Report pages billed and the running cost
+   Photo folders: EXIF-transpose upright JPEGs for OCR/cropping and build the compact `RAW/<Author_Title_Year>.pdf` via `tools/photos_to_pdf.py`.
+   OCR: **always** use our Mistral account via `tools/mistral_ocr.py` (Markdown with LaTeX equations and equation numbers,
+   about $0.001/page; key in `~/.config/mistral/api_key` or `MISTRAL_API_KEY`). Render PDF pages first with
+   `tools/pdf_render.py` (200 dpi, `p####.jpg` = PDF page) or pass upright page JPEGs directly, and run several shards in parallel;
+   the per-page cache means a rerun never pays twice. Keep the cache until the book is published. Report pages billed and the running cost
    (pages × $0.001) in every progress update. Fall back to `tools/scan_ocr.sh` (tesseract) only without a key or for
    material that must not leave the machine, and say so.
    Map printed pages, detect duplicate scans (same printed number / near-identical image) and gaps with Python, not by reading.
@@ -49,10 +53,14 @@ Input: a local PDF path or HTTPS URL supplied by the user.
    chapter file (`NN-index.md`, as in `graphic-statics-foeppl/08-index.md`), never INDEX.md. Publish the scanned pages with `tools/scan_index.py`
    (`scans/` images + `SCANS.md`, printed page → scan) and link SCANS.md from README, so every page can be checked.
    Add `cover.jpg` (the scanned cover, or the title page; ≈600 px wide, scanner edges trimmed) for the library shelf.
-6. After upload, add the book to R2 `PROCESSED.md` (`| \`<id>/\` | YYYY-MM-DD | done |`; only `done` entries appear
-   in LIBRARY.md and on the course website, with that date), then regenerate and upload `LIBRARY.md`
-   (`tools/r2_library_map.sh --upload`); verify build reports. Unfinished books get no `done` row.
-   Check the book's block in the new LIBRARY.md: it must list every chapter, not "0 files".
+6. Upload the compact PDF to `s3://brg-books/RAW/<Author_Title_Year>.pdf` and upload the clean book folder (without `.eqpng/`,
+   `.checks/`, or `src/parts/`) to `s3://brg-books/<id>/` without remote deletions. Download the current R2 `PROCESSED.md`, add
+   `| \`<id>/\` | YYYY-MM-DD | done |` (only `done` entries appear in `LIBRARY.md` and on the course website, with that date),
+   upload `PROCESSED.md`, then regenerate and upload `LIBRARY.md` (`python3 -I tools/r2_library_map.py --upload` or
+   `bash tools/r2_library_map.sh --upload`). Unfinished books get no `done` row.
+   Check the book's block in the new `LIBRARY.md`: it must list every chapter, never "0 files".
+   Finally, trigger a GitHub Pages rebuild on `BRG-teaching/Teaching` (`git commit --allow-empty -m "Pages: rebuild <id>" && git push`)
+   and verify the book is live on `https://brg-teaching.github.io/Teaching/CAS/website/library.html`.
 7. Record what is still missing or unreadable (pages, plates, sources) in the repo's
    `docs/books/books_missing_pages.md`: a short needs-only list; remove items once resolved and books once complete.
 

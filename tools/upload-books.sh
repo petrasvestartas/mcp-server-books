@@ -37,4 +37,7 @@ fi
 # AWS compares size and modification time; changed files replace matching keys.
 aws --profile "$profile" --region auto --endpoint-url "$endpoint" \
   s3 sync "${source_dir%/}/" "s3://$bucket/" \
+  --exclude ".eqpng/*" --exclude "*/.eqpng/*" \
+  --exclude ".checks/*" --exclude "*/.checks/*" \
+  --exclude "src/parts/*" --exclude "*/src/parts/*" \
   --no-follow-symlinks "${options[@]}"

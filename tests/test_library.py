@@ -122,3 +122,41 @@ def test_figure_only_from_the_library():
     for url in ("https://other.test/example-book/figures/fig001.png", "example-book/01-chapter.md", "../x.png"):
         with pytest.raises(ValueError):
             books.figure(url)
+
+
+def test_fastmcp_v4_server_tools_and_prompts(monkeypatch):
+    import asyncio
+
+    import fastmcp
+    from fastmcp import Client
+
+    import books_mcp.server as srv
+
+    assert int(fastmcp.__version__.split(".")[0]) >= 4
+    mock_books, _ = make_books()
+    monkeypatch.setattr(srv, "books", mock_books)
+
+    async def run_checks():
+        async with Client(srv.mcp) as client:
+            tools = await client.list_tools()
+            tool_names = {t.name for t in tools}
+            assert {"command", "get_book_guide", "list_books", "list_book_sections", "search_books", "read_book_section", "look_at_figure"} <= tool_names
+
+            prompts = await client.list_prompts()
+            prompt_names = {p.name for p in prompts}
+            assert {"books", "books_workflow", "books_guide", "books_upload", "books_website", "books_process"} <= prompt_names
+
+            wf = await client.call_tool("command", {"name": "mcp_books_workflow"})
+            assert "mistral_ocr.py" in str(wf)
+            assert "photos_to_pdf.py" in str(wf)
+
+            guide = await client.call_tool("get_book_guide", {"include_library_map": True})
+            assert "Example book" in str(guide)
+
+            fig = await client.call_tool("look_at_figure", {"url": "example-book/figures/fig001.png"})
+            assert any(getattr(item, "type", "") == "image" for item in fig.content)
+
+            pr = await client.get_prompt("books_process", {"source": "/tmp/photos"})
+            assert "photos_to_pdf.py" in str(pr)
+
+    asyncio.run(run_checks())

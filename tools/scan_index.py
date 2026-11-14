@@ -48,7 +48,7 @@ def main():
     ap.add_argument("--no-images", action="store_true")
     a = ap.parse_args()
 
-    rows = list(csv.DictReader(open(a.mapping, newline="")))
+    rows = list(csv.DictReader(open(a.mapping, encoding="utf-8", newline="")))
     for r in rows:
         if r["kind"] not in ("page", "plate", "other"):
             sys.exit(f"bad kind in row {r}")
@@ -76,7 +76,7 @@ def main():
         L += ["", "## Other scanned images", "", "| Content | Scan |", "|---|---|"]
         L += [f"| {r['label']} | {link(r['image'])} |" for r in other]
     L += ["", f"Pages not in the scan: {a.missing or 'none'}."]
-    open(f"{a.out}/SCANS.md", "w").write("\n".join(L) + "\n")
+    open(f"{a.out}/SCANS.md", "w", encoding="utf-8").write("\n".join(L) + "\n")
     print(f"{len(dict.fromkeys(r['image'] for r in rows if '/' not in r['image']))} images, {len(pages)} page rows -> {a.out}")
 
 

@@ -20,7 +20,8 @@ a = sys.argv[1:]
 if len(a) < 7:
     sys.exit(__doc__)
 cmd, key, page = a[0], a[1], a[2]
-src = (pathlib.Path(key) / page) if key.startswith("/") else (WORK / key / "pages" / f"{page}.jpg")
+is_abs = pathlib.Path(key).is_absolute()
+src = (pathlib.Path(key) / page) if is_abs else (WORK / key / "pages" / f"{page}.jpg")
 if not src.exists() and src.with_suffix(".png").exists():
     src = src.with_suffix(".png")
 im = ImageOps.exif_transpose(Image.open(src)).convert("RGB")
@@ -50,7 +51,7 @@ else:
             wx0, wy0, wx1, wy1 = [float(v) for v in a[i + 1].split(",")]
             ImageDraw.Draw(c).rectangle([int((wx0 - x0) / (x1 - x0) * c.width), int((wy0 - y0) / (y1 - y0) * c.height),
                                          int((wx1 - x0) / (x1 - x0) * c.width), int((wy1 - y0) / (y1 - y0) * c.height)], fill=(255, 255, 255))
-    if key.startswith("/") or "--colour" in a:
+    if is_abs or "--colour" in a:
         res = c
     else:
         g = c.convert("L")

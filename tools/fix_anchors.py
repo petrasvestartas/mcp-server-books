@@ -33,10 +33,10 @@ def anchors(text):
 
 def run(folder, dry):
     files = {f.name: f for f in folder.glob("*.md")}
-    anch = {n: anchors(f.read_text()) for n, f in files.items()}
+    anch = {n: anchors(f.read_text(encoding="utf-8")) for n, f in files.items()}
     fixed = bad = 0
     for n, f in files.items():
-        t = f.read_text()
+        t = f.read_text(encoding="utf-8")
 
         def fix(m):
             nonlocal fixed, bad
@@ -60,7 +60,7 @@ def run(folder, dry):
 
         t2 = re.sub(r"\]\((\d[\w.-]*\.md)?#([\w-]+)\)", fix, t)
         if t2 != t and not dry:
-            f.write_text(t2)
+            f.write_text(t2, encoding="utf-8")
     return fixed, bad
 
 
