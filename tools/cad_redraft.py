@@ -1,4 +1,4 @@
-"""Book-level CAD SVG redrafting workflow helper for BRG Books.
+r"""Book-level CAD SVG redrafting workflow helper for BRG Books.
 
 Subcommands:
   backup-orig <book_dir>
@@ -397,3 +397,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
