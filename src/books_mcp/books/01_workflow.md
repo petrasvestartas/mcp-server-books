@@ -47,20 +47,26 @@ Input: a local PDF path, a local folder of page photographs, or an HTTPS URL sup
    and log it in `REVIEW-*.md`. Then one book-wide consistency pass (terms, notation, title line)
    and `tools/fix_anchors.py`. Claim independent review only if a separate reviewer actually performed it.
 5. Label structural figures (`tools/structlabels.py` as a first pass). Create README, INDEX, GLOSSARY,
-   and FIGURES; follow the guide's construction rules. `INDEX.md` is the chapter list, one `## [Chapter title](NN-file.md)` heading
+   and FIGURES; follow the guide's construction rules.
+   **Redraft all diagram/picture figures into parametric SVGs alongside original scans (mandatory rule):**
+   - Preserve every cropped original scan in `figures/orig/<stem>.png` (`python3 -B -X utf8 tools/cad_redraft.py backup-orig <book>`, skipping photographic covers `cover.jpg` / `figures/cover-crop.png`).
+   - Inspect every `figures/orig/<stem>.png` scan alongside `src/*.md` (never draw from `FIGURES.md` text alone; fix any inaccurate `FIGURES.md` or `alt` descriptions spotted) and author clean parametric 2D/3D CAD SVGs at `figures/<stem>.svg` (`tools/cad_engine.py` + `tools/CAD_REDRAFT_BRIEF.md`), translating source-language figure labels to English.
+   - Verify `0 issues` (`tools/verify_cad_svg.py`), apply SVG references + `· [original](figures/orig/<stem>.png)` dual links in `src/*.md` and `FIGURES.md` (`python3 -B -X utf8 tools/cad_redraft.py apply-svgs <book>`), rebuild published chapters via `<book>/src/build.py`, inspect side-by-side contact sheets (`compare-sheets`), and pass `python3 -B -X utf8 tools/cad_redraft.py check <book>` so clicking any figure on `library.html` toggles `Digital · Show original` ↔ `Original · Show digital`.
+   `INDEX.md` is the chapter list, one `## [Chapter title](NN-file.md)` heading
    plus a summary per published chapter (`tools/merge_index.py`): LIBRARY.md and the website read chapters only
    from it, so a book without these headings is listed as "0 files" and hidden. The book's own subject index is a
    chapter file (`NN-index.md`, as in `graphic-statics-foeppl/08-index.md`), never INDEX.md. Publish the scanned pages with `tools/scan_index.py`
    (`scans/` images + `SCANS.md`, printed page → scan) and link SCANS.md from README, so every page can be checked.
    Add `cover.jpg` (the scanned cover, or the title page; ≈600 px wide, scanner edges trimmed) for the library shelf.
-6. Upload the compact PDF to `s3://brg-books/RAW/<Author_Title_Year>.pdf` and upload the clean book folder (without `.eqpng/`,
+6. Upload the compact PDF to `s3://brg-books/RAW/<Author_Title_Year>.pdf` and upload the clean book folder (including `figures/*.svg` with `Content-Type: image/svg+xml`, `figures/*.png`, `figures/orig/*.png`, and `cad/*.json`; without `.eqpng/`,
    `.checks/`, or `src/parts/`) to `s3://brg-books/<id>/` without remote deletions. Download the current R2 `PROCESSED.md`, add
    `| \`<id>/\` | YYYY-MM-DD | done |` (only `done` entries appear in `LIBRARY.md` and on the course website, with that date),
    upload `PROCESSED.md`, then regenerate and upload `LIBRARY.md` (`python3 -I tools/r2_library_map.py --upload` or
    `bash tools/r2_library_map.sh --upload`). Unfinished books get no `done` row.
    Check the book's block in the new `LIBRARY.md`: it must list every chapter, never "0 files".
+   Verify the book's subject section in `BRG-teaching/Teaching` (`website/src/useLibrary.js` `SUBJECTS`: `Graphic statics`, `Form finding`, `Thrust networks & masonry`, `Materialization`, `Math`, `Computation`, `Structural design & history` — e.g. mathematics books belong in `Math`, never misclassified under `Computation`).
    Finally, trigger a GitHub Pages rebuild on `BRG-teaching/Teaching` (`git commit --allow-empty -m "Pages: rebuild <id>" && git push`)
-   and verify the book is live on `https://brg-teaching.github.io/Teaching/CAS/website/library.html`.
+   and verify the book, its subject chip, and the `Digital · Show original` figure toggle are live on `https://brg-teaching.github.io/Teaching/CAS/website/library.html`.
 7. Record what is still missing or unreadable (pages, plates, sources) in the repo's
    `docs/books/books_missing_pages.md`: a short needs-only list; remove items once resolved and books once complete.
 

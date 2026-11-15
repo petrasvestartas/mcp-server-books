@@ -41,16 +41,16 @@ Run these steps in a separate, trusted local Books workspace when authoring is r
 6. Build with `python3 <book>/src/build.py <file>.md`; require `unconverted: 0` and no unknown inline commands.
 7. Check rendered equations against scans. Independently review corrections: A=correct, B=fix, C=restore original, D=uncertain/both readings.
 8. Add INDEX, GLOSSARY, and FIGURES using `tools/INDEX_BRIEF.md`; record source pages and review notes.
-9. Follow `tools/ILLUSTRATION_BRIEF.md` for checked constructions.
-10. Rebuild `LIBRARY.md` with `tools/library_map.py`; check with `--check`. Upload only when requested; restart MCP to refresh its cache.
+9. Redraft all non-cover diagram/picture figures into clean parametric 2D/3D CAD SVGs (`figures/<stem>.svg`) while preserving original cropped scans in `figures/orig/<stem>.png` (`tools/cad_redraft.py`, `tools/cad_engine.py`, `tools/verify_cad_svg.py`, `tools/CAD_REDRAFT_BRIEF.md`) so `FIGURES.md` links both (`[Fig. N](figures/<stem>.svg) · [original](figures/orig/<stem>.png)`) for the website's `Digital · Show original` toggle. Follow `tools/ILLUSTRATION_BRIEF.md` when animated constructions are also requested.
+10. Rebuild `LIBRARY.md` with `tools/library_map.py` (or `tools/r2_library_map.py`); check with `--check` and verify the book's subject section in `Teaching/website/src/useLibrary.js` (`SUBJECTS`, including `Math` for mathematics books). Upload only when requested; restart MCP to refresh its cache.
 
 ## Formats and figures
 
 - Edit `src/`, then rebuild published files. Source math uses dollar/backtick inline delimiters and fenced `math` blocks.
 - Preserve letters, primes, signs, indices, and fractions. Footnote corrected misprints; retain author errors with explanation.
-- Crop original figures without redrawing. Keep labels/captions; exclude neighbours.
-- Names: `figNNN.png` for plates, `txt-figNNN.png` for in-text, `noteN-figNN.png` for notes.
-  Lettered figures add the printed page (`note1-p297-figc.png`); no two names may differ only by letter case.
+- First crop original figures (`tools/pagetool.py`) without altering the scan, then back them up to `figures/orig/<stem>.png` (`tools/cad_redraft.py backup-orig <book>`) and redraft every non-cover diagram/picture figure into a clean parametric SVG at `figures/<stem>.svg` (`tools/cad_engine.py`, `tools/verify_cad_svg.py`, `tools/cad_redraft.py apply-svgs <book>`). Translate source-language figure labels to English and inspect every scan directly rather than relying on `FIGURES.md` descriptions alone.
+- Names: `figNNN` for plates, `txt-figNNN` for in-text, `noteN-figNN` for notes (`figures/<stem>.svg` + 2x `figures/<stem>.png` + `figures/orig/<stem>.png`).
+  Lettered figures add the printed page (`note1-p297-figc`); no two names may differ only by letter case. Photographic front covers (`cover.jpg`, `figures/cover-crop.png`) stay raster.
 - Every figure of a structural system carries `[labels: …]` in its alt text (cables, arches, vaults and shells,
   truss, beam, frames, plates or slabs, columns, bracing, material-specific forms, plastic and stress field models,
   connections, graphic statics).
