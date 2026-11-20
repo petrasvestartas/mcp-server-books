@@ -25,7 +25,13 @@ Input: a local PDF path, a local folder of page photographs, or an HTTPS URL sup
 ## Process
 
 1. Check pages, scan quality, contents, and errata. Save scope/progress in the book's `PROCESSING.md`.
-   Spread scans: `tools/scan_split.py` (check one spread's rotation first).
+   Spread scans (default): run `tools/spread_crop.py PDF WORK/<id>/spreads` first. It straightens every spread, crops it to the
+   paper of both facing pages (no scanner bed, hands or fore-edge stack) and gives all spreads one aligned frame
+   (median paper box for text-only, full-colour or blank spreads). Check a contact sheet of a sample before going on.
+   Keep facing pages together: figures are one image per spread (`figures/ppLLLL-RRRR.png`, both pages side by side) and
+   SCANS.md uses the spread images (`tools/scan_index.py`, one image serving both printed pages), so drawings and titles
+   that run across the gutter stay whole. Split into single pages (`tools/scan_split.py`, check one spread's rotation
+   first) only as OCR input, never for published figures or scans.
    Photo folders: EXIF-transpose upright JPEGs for OCR/cropping and build the compact `RAW/<Author_Title_Year>.pdf` via `tools/photos_to_pdf.py`.
    OCR: **always** use our Mistral account via `tools/mistral_ocr.py` (Markdown with LaTeX equations and equation numbers,
    about $0.001/page; key in `~/.config/mistral/api_key` or `MISTRAL_API_KEY`). Render PDF pages first with
@@ -57,7 +63,9 @@ Input: a local PDF path, a local folder of page photographs, or an HTTPS URL sup
    from it, so a book without these headings is listed as "0 files" and hidden. The book's own subject index is a
    chapter file (`NN-index.md`, as in `graphic-statics-foeppl/08-index.md`), never INDEX.md. Publish the scanned pages with `tools/scan_index.py`
    (`scans/` images + `SCANS.md`, printed page → scan) and link SCANS.md from README, so every page can be checked.
-   Add `cover.jpg` (the scanned cover, or the title page; ≈600 px wide, scanner edges trimmed) for the library shelf.
+   Add `cover.jpg` for the library shelf: the front cover (for a dust jacket, only its front panel, not back or spine),
+   else the title page; ≈600 px wide, straightened, cropped to the cover edge, with library stamps, barcode stickers,
+   shelf marks and dust removed (look at the result).
 6. Upload the compact PDF to `s3://brg-books/RAW/<Author_Title_Year>.pdf` and upload the clean book folder (including `figures/*.svg` with `Content-Type: image/svg+xml`, `figures/*.png`, `figures/orig/*.png`, and `cad/*.json`; without `.eqpng/`,
    `.checks/`, or `src/parts/`) to `s3://brg-books/<id>/` without remote deletions. Download the current R2 `PROCESSED.md`, add
    `| \`<id>/\` | YYYY-MM-DD | done |` (only `done` entries appear in `LIBRARY.md` and on the course website, with that date),
