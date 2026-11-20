@@ -6,11 +6,14 @@ Server reads only. Processing done by your agent (Claude Code / MCP client) with
 
 ## Install
 
+    https://books-mcp.fastmcp.app/mcp
+    
     git clone https://github.com/petrasvestartas/mcp-server-books.git
     cd mcp-server-books
     curl -LsSf https://astral.sh/uv/install.sh | sh
     uv sync --extra tools --extra dev
     uv run pytest
+    
 
 ## Run
 
