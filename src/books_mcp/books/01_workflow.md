@@ -31,7 +31,19 @@ Input: a local PDF path, a local folder of page photographs, or an HTTPS URL sup
    Keep facing pages together: figures are one image per spread (`figures/ppLLLL-RRRR.png`, both pages side by side) and
    SCANS.md uses the spread images (`tools/scan_index.py`, one image serving both printed pages), so drawings and titles
    that run across the gutter stay whole. Split into single pages (`tools/scan_split.py`, check one spread's rotation
-   first) only as OCR input, never for published figures or scans.
+   first) only as OCR input, never for published figures or scans. Better: `tools/spread_crop.py ... --split WORK/<id>/pages`
+   cuts the straightened spreads exactly at the fold; OCR those pages. Pages cut from the raw scan keep a strip of the
+   facing page, and the OCR then reads cut-off words ("This no", "demar") into the text.
+   Clean the OCR before building (`tools/ocr_clean.py clean`, or `clean_text()` from a builder): running heads and their
+   misreadings, step labels (A1, B2, A+B, 2x), page numbers, letter debris, icon marks, empty tables and layout JSON
+   invented on blank pages; `--no-math` for books without formulas (OCR invents formulas on drawing-only pages);
+   `--kanji` corrects look-alike Japanese characters only where the romanised reading confirms them.
+   Before every upload run `tools/ocr_clean.py check <book>` and fix every reported line at its cause in the builder.
+   Catalogue books (joints, details, plates: one item per spread) are published compactly: one entry per item —
+   `## <name>`, its type, its names in the other languages, the spread image, one line with the pages and the scan
+   link — and no other OCR text from those pages. Glossary-like definition pages become one entry per term
+   (term, translations, definition as one paragraph). Builders that use multiprocessing must keep every write step
+   under `if __name__ == "__main__":` (Python 3.14 workers re-import the script).
    Photo folders: EXIF-transpose upright JPEGs for OCR/cropping and build the compact `RAW/<Author_Title_Year>.pdf` via `tools/photos_to_pdf.py`.
    OCR: **always** use our Mistral account via `tools/mistral_ocr.py` (Markdown with LaTeX equations and equation numbers,
    about $0.001/page; key in `~/.config/mistral/api_key` or `MISTRAL_API_KEY`). Render PDF pages first with

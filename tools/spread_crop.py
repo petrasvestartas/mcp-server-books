@@ -1,7 +1,7 @@
 """Turn a scan of open-book spreads into straightened, aligned spread images cropped to the paper.
 
     python3 -I tools/spread_crop.py PDF OUTDIR [--dpi 150] [--first N] [--last N] [--rotate 0|90|-90|180]
-                                     [--max-skew 2.0] [--no-deskew] [--jobs 8]
+                                     [--max-skew 2.0] [--no-deskew] [--jobs 8] [--split PAGEDIR]
 
 Default for books whose content runs across facing pages (catalogues, plates, joint spreads, atlases):
 keep the two facing pages together as one image instead of cutting them at the gutter.
@@ -17,6 +17,11 @@ For every PDF page (= one spread):
      last dark edge.
 Writes OUTDIR/sNNN.jpg (NNN = PDF page) and OUTDIR/spreads.csv (page, skew, box, fallback). Spreads already
 written are skipped, so a run can be resumed. Needs pdftoppm (poppler), Pillow, numpy.
+
+--split PAGEDIR also cuts every spread at the fold into PAGEDIR/sNNNL.jpg and sNNNR.jpg for OCR. The fold is the
+narrow grey line found in the bottom margin and in the page body; where those disagree with the neighbouring
+spreads (a drawing line or a text gap looked like a fold), the rolling median of the neighbours is used. OCR these
+pages, not pages split from the raw scan: a strip of the facing page makes the OCR read cut-off words.
 
 Use the spreads for figures (one image per spread, e.g. figures/ppLLLL-RRRR.png) and for SCANS.md
 (tools/scan_index.py with the spread images; one image may serve two printed pages). Split into single pages only
@@ -118,6 +123,37 @@ def second_pass(job):
     return page, t, (x0, y0, x1, y1), int(fallback)
 
 
+def fold_candidates(im):
+    """Fold position (fraction of width) measured in the bottom margin and in the page body."""
+    g = np.asarray(im.convert("L")).astype(float)
+    H, W = g.shape
+    a, b = int(W * .44), int(W * .57)
+    out = []
+    for r0, r1 in ((.935, .99), (.08, .92)):
+        prof = np.median(g[int(H * r0):int(H * r1), a:b], axis=0)
+        k = 41
+        pad = np.pad(prof, k // 2, mode="edge")
+        local = np.array([np.median(pad[i:i + k]) for i in range(len(prof))])
+        out.append((a + int(np.argmax(local - prof))) / W)
+    return out
+
+
+def split_spreads(outdir, pagedir):
+    names = sorted(p.stem for p in pathlib.Path(outdir).glob("s[0-9]*.jpg"))
+    pagedir = pathlib.Path(pagedir); pagedir.mkdir(parents=True, exist_ok=True)
+    cand = np.array([fold_candidates(Image.open(pathlib.Path(outdir) / f"{n}.jpg")) for n in names])
+    fallback = 0
+    for i, n in enumerate(names):
+        ref = np.median(cand[max(0, i - 10): i + 11].ravel())
+        ok = [c for c in cand[i] if abs(c - ref) < 0.01]
+        x = float(np.mean(ok)) if ok else float(ref)
+        fallback += not ok
+        im = Image.open(pathlib.Path(outdir) / f"{n}.jpg"); c = int(im.width * x)
+        im.crop((0, 0, c, im.height)).save(pagedir / f"{n}L.jpg", quality=90)
+        im.crop((c, 0, im.width, im.height)).save(pagedir / f"{n}R.jpg", quality=90)
+    print(f"split {len(names)} spreads at the fold -> {pagedir} (neighbour median used for {fallback})")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("pdf"); ap.add_argument("outdir")
@@ -127,12 +163,15 @@ def main():
     ap.add_argument("--max-skew", type=float, default=2.0)
     ap.add_argument("--no-deskew", action="store_true")
     ap.add_argument("--jobs", type=int, default=8)
+    ap.add_argument("--split", metavar="PAGEDIR", help="also cut every spread at the fold into single pages (OCR input)")
     a = ap.parse_args()
     out = pathlib.Path(a.outdir); out.mkdir(parents=True, exist_ok=True)
     n = int(next(l.split()[-1] for l in subprocess.run(["pdfinfo", a.pdf], capture_output=True, text=True).stdout.splitlines()
                  if l.startswith("Pages:")))
     pages = [p for p in range(a.first, (a.last or n) + 1) if not (out / f"s{p:03d}.jpg").exists()]
     if not pages:
+        if a.split:
+            split_spreads(out, a.split)
         sys.exit("all spreads already written")
     with tempfile.TemporaryDirectory() as tmp:
         with ProcessPoolExecutor(a.jobs) as ex:
@@ -153,6 +192,8 @@ def main():
             w.writerow([page, t, *b, fb])
     print(f"{len(rows)} spreads -> {out} · frame {W}×{H} px · median box used for {sum(r[3] for r in rows)} · "
           f"skew range {min(r[1] for r in rows)}..{max(r[1] for r in rows)}°")
+    if a.split:
+        split_spreads(out, a.split)
 
 
 if __name__ == "__main__":

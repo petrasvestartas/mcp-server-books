@@ -101,13 +101,15 @@ After book upload (and uploading the compact PDF to `s3://brg-books/RAW/`):
 
     Books/RAW/<scan>.pdf  (or photo folder -> tools/photos_to_pdf.py -> compact PDF in Books/RAW/)
       -> tools/spread_crop.py                          spreads: straightened, cropped, aligned (default)
-      -> tools/scan_split.py, tools/pdf_render.py      single pages, OCR input only
+      -> tools/spread_crop.py --split                  single pages cut at the fold, OCR input only
       -> tools/mistral_ocr.py                          Mistral OCR markdown + LaTeX (~$0.001/page)
+      -> tools/ocr_clean.py clean                      drop running heads, labels, debris, invented formulas
       -> agent + tools/TRANSLATE_BRIEF.md              English chapters (built with tools/templates/build.py)
       -> agent + tools/PROOF_BRIEF.md                  proofread
       -> tools/mistral_compare.py, mistral_textcheck.py  re-check
       -> tools/figcrop.py, structlabels.py             figures
       -> tools/fix_anchors.py, merge_index.py          INDEX, anchors
+      -> tools/ocr_clean.py check                      no nonsense text left (run before upload)
       -> tools/upload-books.sh --upload + RAW PDF      Cloudflare R2
       -> PROCESSED.md + r2_library_map.py --upload + Teaching push   live on library.html
 
