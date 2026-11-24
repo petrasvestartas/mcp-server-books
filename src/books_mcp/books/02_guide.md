@@ -48,6 +48,7 @@ Run these steps in a separate, trusted local Books workspace when authoring is r
 
 - Edit `src/`, then rebuild published files. Source math uses dollar/backtick inline delimiters and fenced `math` blocks.
 - Preserve letters, primes, signs, indices, and fractions. Footnote corrected misprints; retain author errors with explanation.
+- Never embed full-page scans containing source-language body text as figures in translated chapters (only full-spread catalogue/plate books use spread images). Translate all prose and tables into English Markdown and crop only the individual diagrams, drawings, charts, or photographs; full-page scans belong exclusively in `scans/` and `SCANS.md`.
 - First crop original figures (`tools/pagetool.py`) without altering the scan, then back them up to `figures/orig/<stem>.png` (`tools/cad_redraft.py backup-orig <book>`) and redraft every non-cover diagram/picture figure into a clean parametric SVG at `figures/<stem>.svg` (`tools/cad_engine.py`, `tools/verify_cad_svg.py`, `tools/cad_redraft.py apply-svgs <book>`). Translate source-language figure labels to English and inspect every scan directly rather than relying on `FIGURES.md` descriptions alone.
 - Names: `figNNN` for plates, `txt-figNNN` for in-text, `noteN-figNN` for notes (`figures/<stem>.svg` + 2x `figures/<stem>.png` + `figures/orig/<stem>.png`).
   Lettered figures add the printed page (`note1-p297-figc`); no two names may differ only by letter case. Photographic front covers (`cover.jpg`, `figures/cover-crop.png`) stay raster.

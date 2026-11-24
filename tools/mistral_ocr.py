@@ -59,9 +59,15 @@ def main():
         pages = res.get("pages", [])
         if pdf:
             for p in pages:
-                (out / f"{f.stem}-p{p.get('index', 0) + 1:03d}.md").write_text(p.get("markdown", ""), encoding="utf-8")
+                idx = p.get("index", 0) + 1
+                (out / f"{f.stem}-p{idx:03d}.md").write_text(p.get("markdown", ""), encoding="utf-8")
+                if p.get("images"):
+                    (out / f"{f.stem}-p{idx:03d}.images.json").write_text(json.dumps(p["images"], indent=2), encoding="utf-8")
         else:
             dst.write_text("\n\n".join(p.get("markdown", "") for p in pages), encoding="utf-8")
+            imgs = [img for p in pages for img in p.get("images", [])]
+            if imgs:
+                (out / f"{f.stem}.images.json").write_text(json.dumps(imgs, indent=2), encoding="utf-8")
         n += res.get("usage_info", {}).get("pages_processed", 1)
         print(f"{f.name} -> {dst.name}")
     print(f"done: {n} pages billed")

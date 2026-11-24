@@ -28,10 +28,13 @@ Input: a local PDF path, a local folder of page photographs, or an HTTPS URL sup
    Spread scans (default): run `tools/spread_crop.py PDF WORK/<id>/spreads` first. It straightens every spread, crops it to the
    paper of both facing pages (no scanner bed, hands or fore-edge stack) and gives all spreads one aligned frame
    (median paper box for text-only, full-colour or blank spreads). Check a contact sheet of a sample before going on.
-   Keep facing pages together: figures are one image per spread (`figures/ppLLLL-RRRR.png`, both pages side by side) and
-   SCANS.md uses the spread images (`tools/scan_index.py`, one image serving both printed pages), so drawings and titles
-   that run across the gutter stay whole. Split into single pages (`tools/scan_split.py`, check one spread's rotation
-   first) only as OCR input, never for published figures or scans. Better: `tools/spread_crop.py ... --split WORK/<id>/pages`
+   Keep facing pages together ONLY for catalogue/plate books whose drawings run across the gutter (figures are one image
+   per spread, `figures/ppLLLL-RRRR.png`, and SCANS.md uses the spread images). **For all prose textbooks, monographs,
+   and handbooks: NEVER embed full-page or full-spread scans containing source-language prose as figures** — translate all
+   prose and tables into English Markdown and crop **only** the individual figures, diagrams, charts, or photographs from
+   each page (`tools/pagetool.py` or the `<stem>.images.json` bounding boxes saved by `tools/mistral_ocr.py`). Full-page
+   scans belong exclusively in `scans/` + `SCANS.md`. Split into single pages (`tools/scan_split.py`, check one spread's
+   rotation first) as OCR input and for single-page figure cropping. Better: `tools/spread_crop.py ... --split WORK/<id>/pages`
    cuts the straightened spreads exactly at the fold; OCR those pages. Pages cut from the raw scan keep a strip of the
    facing page, and the OCR then reads cut-off words ("This no", "demar") into the text.
    Clean the OCR before building (`tools/ocr_clean.py clean`, or `clean_text()` from a builder): running heads and their
@@ -45,8 +48,9 @@ Input: a local PDF path, a local folder of page photographs, or an HTTPS URL sup
    (term, translations, definition as one paragraph). Builders that use multiprocessing must keep every write step
    under `if __name__ == "__main__":` (Python 3.14 workers re-import the script).
    Photo folders: EXIF-transpose upright JPEGs for OCR/cropping and build the compact `RAW/<Author_Title_Year>.pdf` via `tools/photos_to_pdf.py`.
-   OCR: **always** use our Mistral account via `tools/mistral_ocr.py` (Markdown with LaTeX equations and equation numbers,
-   about $0.001/page; key in `~/.config/mistral/api_key` or `MISTRAL_API_KEY`). Render PDF pages first with
+   OCR: **always** use our Mistral account via `tools/mistral_ocr.py` (Markdown with LaTeX equations, equation numbers,
+   and per-page figure bounding boxes saved to `<stem>.images.json` at zero extra cost, about $0.001/page; key in
+   `~/.config/mistral/api_key` or `MISTRAL_API_KEY`). Render PDF pages first with
    `tools/pdf_render.py` (200 dpi, `p####.jpg` = PDF page) or pass upright page JPEGs directly, and run several shards in parallel;
    the per-page cache means a rerun never pays twice. Keep the cache until the book is published. Report pages billed and the running cost
    (pages × $0.001) in every progress update. Fall back to `tools/scan_ocr.sh` (tesseract) only without a key or for
@@ -72,7 +76,9 @@ Input: a local PDF path, a local folder of page photographs, or an HTTPS URL sup
    - Verify `0 issues` (`tools/verify_cad_svg.py`), apply SVG references + `· [original](figures/orig/<stem>.png)` dual links in `src/*.md` and `FIGURES.md` (`python3 -B -X utf8 tools/cad_redraft.py apply-svgs <book>`), rebuild published chapters via `<book>/src/build.py`, inspect side-by-side contact sheets (`compare-sheets`), and pass `python3 -B -X utf8 tools/cad_redraft.py check <book>` so clicking any figure on `library.html` toggles `Digital · Show original` ↔ `Original · Show digital`.
    `INDEX.md` is the chapter list, one `## [Chapter title](NN-file.md)` heading
    plus a summary per published chapter (`tools/merge_index.py`): LIBRARY.md and the website read chapters only
-   from it, so a book without these headings is listed as "0 files" and hidden. The book's own subject index is a
+   from it, so a book without these headings is listed as "0 files" and hidden. Start each summary directly with English
+   prose (put `(pp. a–b)` at the end, never `*pp. a–b.*` at the start, because `library_map.py` takes the first sentence
+   up to the first period). The book's own subject index is a
    chapter file (`NN-index.md`, as in `graphic-statics-foeppl/08-index.md`), never INDEX.md. Publish the scanned pages with `tools/scan_index.py`
    (`scans/` images + `SCANS.md`, printed page → scan) and link SCANS.md from README, so every page can be checked.
    Add `cover.jpg` for the library shelf: the front cover (for a dust jacket, only its front panel, not back or spine),
