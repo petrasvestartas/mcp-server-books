@@ -56,7 +56,7 @@ class PublicBooks:
 
     @staticmethod
     def reader_url(book: str, section: str = "") -> str:
-        if book == "brg-publications":
+        if book == "brg-publications" and not section:
             return f"{WEBSITE_URL}#/papers"
         if section:
             return f"{WEBSITE_URL}#/b/{book}/{quote(section, safe='')}"

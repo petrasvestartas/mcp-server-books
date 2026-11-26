@@ -45,15 +45,15 @@ COMMANDS = {command_name(path): path for path in sorted(HERE.glob("*/*.md"))}
 
 def publications():
     """All BRG papers, newest year first, formatted on the server so the chatbot only repeats them."""
-    papers = books.sections("brg-publications")
-    lines, year = [f"**BRG publications**: {len(papers)} papers. [Open the library]({papers[0]['url'] if papers else ''})"], None
+    papers = list({(paper["title"], paper["summary"][:6]): paper for paper in reversed(books.sections("brg-publications"))}.values())[::-1]
+    lines, year = [f"**BRG publications**: {len(papers)} papers. [Open the library]({books.reader_url('brg-publications')})"], None
     for paper in papers:
         meta = paper["summary"].split(")", 1)[0].lstrip("(").split(" · ")
         if meta[0] != year:
             year = meta[0]
             lines.append(f"\n### {year}\n")
         venue = f", {meta[2]}" if len(meta) > 3 else ""
-        lines.append(f"- [{paper['title']}]({paper['raw_url']}) ({meta[1] if len(meta) > 1 else ''}{venue})")
+        lines.append(f"- [{paper['title']}]({paper['url']}) ({meta[1] if len(meta) > 1 else ''}{venue})")
     return "\n".join(lines)
 
 
