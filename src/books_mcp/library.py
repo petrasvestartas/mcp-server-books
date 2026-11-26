@@ -1,6 +1,7 @@
 """Discover public books through LIBRARY.md and fetch selected Markdown only."""
 
 from functools import lru_cache
+import os
 from pathlib import PurePosixPath
 import re
 from urllib.parse import quote, urlsplit
@@ -8,6 +9,11 @@ from urllib.parse import quote, urlsplit
 import unicodedata
 
 import httpx
+
+WEBSITE_URL = os.environ.get(
+    "BOOKS_WEBSITE_URL",
+    "https://brg-teaching.github.io/Teaching/CAS/website/library.html"
+).rstrip("/")
 
 
 def _words(text: str) -> list[str]:
@@ -48,6 +54,14 @@ class PublicBooks:
     def url(self, path: str) -> str:
         return self.base_url + "/" + quote(self._safe_path(path), safe="/")
 
+    @staticmethod
+    def reader_url(book: str, section: str = "") -> str:
+        if book == "brg-publications":
+            return f"{WEBSITE_URL}#/papers"
+        if section:
+            return f"{WEBSITE_URL}#/b/{book}/{quote(section, safe='')}"
+        return f"{WEBSITE_URL}#/b/{book}"
+
     @lru_cache(maxsize=32)
     def _text(self, path: str) -> str:
         # Cache a small number of documents for this process. Never fetch credentials
@@ -83,7 +97,8 @@ class PublicBooks:
                 books[current]["sections"].append({
                     "book": current, "section": filename, "title": entry.group(2),
                     "summary": entry.group(3).strip(),
-                    "url": self.url(f"{current}/{filename}"),
+                    "url": self.reader_url(current, filename),
+                    "raw_url": self.url(f"{current}/{filename}"),
                 })
         if not books or not any(book["sections"] for book in books.values()):
             raise ValueError("No book sections found in LIBRARY.md; check the library map format")
@@ -95,7 +110,8 @@ class PublicBooks:
     def list_books(self) -> list[dict]:
         return [{"id": book["id"], "title": book["title"],
                  "section_count": len(book["sections"]),
-                 "index_url": self.url(f"{book['id']}/INDEX.md")}
+                 "index_url": self.reader_url(book["id"]),
+                 "raw_url": self.url(f"{book['id']}/INDEX.md")}
                 for book in self._catalog().values()]
 
     def sections(self, book: str) -> list[dict]:
@@ -166,7 +182,8 @@ class PublicBooks:
         selected = "\n".join(lines[start_line - 1:start_line - 1 + line_count])
         # Long Markdown lines can contain paragraphs or embedded data; cap tool output.
         text = selected[:20000]
-        return {"book": book, "section": section, "representation": representation, "url": self.url(path),
+        return {"book": book, "section": section, "representation": representation,
+                "url": self.reader_url(book, section), "raw_url": self.url(path),
                 "start_line": start_line, "total_lines": len(lines), "text": text,
                 "truncated": len(selected) > len(text),
                 "next_start_line": start_line + line_count if start_line + line_count <= len(lines) else None}
