@@ -22,6 +22,7 @@ from books_mcp.library import PublicBooks
 
 HERE = Path(__file__).parent
 URL = os.environ.get("BOOKS_URL", "https://pub-c082064d3c234b25bcb6abd4240e637c.r2.dev")
+books = PublicBooks(URL)
 
 # ==============================================================================
 # Commands
@@ -42,18 +43,39 @@ def command_name(path):
 COMMANDS = {command_name(path): path for path in sorted(HERE.glob("*/*.md"))}
 
 
+def publications():
+    """All BRG papers, newest year first, formatted on the server so the chatbot only repeats them."""
+    papers = books.sections("brg-publications")
+    lines, year = [f"**BRG publications**: {len(papers)} papers. [Open the library]({papers[0]['url'] if papers else ''})"], None
+    for paper in papers:
+        meta = paper["summary"].split(")", 1)[0].lstrip("(").split(" · ")
+        if meta[0] != year:
+            year = meta[0]
+            lines.append(f"\n### {year}\n")
+        venue = f", {meta[2]}" if len(meta) > 3 else ""
+        lines.append(f"- [{paper['title']}]({paper['raw_url']}) ({meta[1] if len(meta) > 1 else ''}{venue})")
+    return "\n".join(lines)
+
+
+GENERATED = {"books_publications": publications}
+
+
 def text_of(name):
     """The text of a command; a ``readme.md`` ends with the list of the other pages of its folder."""
+    if name in GENERATED:
+        return GENERATED[name]()
     path = COMMANDS[name]
     text = path.read_text(encoding="utf-8").strip()
     if path.stem == "readme":
         pages = [other for other in COMMANDS if other != name and COMMANDS[other].parent == path.parent]
+        pages += [other for other in GENERATED if other.startswith(name + "_")]
         text += "\n\nMore information:\n\n" + "\n".join("- {}: mcp_books_{}".format(page.removeprefix(name + "_").capitalize(), page) for page in pages)
     return text
 
 
 def reply(name):
-    return "Reply with exactly this text, word for word, nothing added:\n\n" + text_of(name)
+    return ("Reply with exactly this text, word for word, as Markdown: keep every line, list item and link; "
+            "do not summarise, merge lines or add anything:\n\n") + text_of(name)
 
 
 # ==============================================================================
@@ -65,11 +87,11 @@ RULE = (
     "call the tool `command` of this server with the message as `name` and repeat the result word for word. "
     "mcp_books lists the commands: {}. "
     "For questions about the library, call get_book_guide once, then search_books and read_book_section; "
-    "cite author, printed page and URL. To process a new scan, use the prompt books_process."
-).format(", ".join(f"mcp_books_{name}" for name in COMMANDS))
+    "cite author, printed page and URL. When asked to list all BRG publications or papers, "
+    "call `command` with mcp_books_publications instead and repeat the result. To process a new scan, use the prompt books_process."
+).format(", ".join(f"mcp_books_{name}" for name in [*COMMANDS, "books_publications"]))
 
 mcp = FastMCP("books", instructions=RULE)
-books = PublicBooks(URL)
 
 
 def add_prompt(name):
@@ -80,7 +102,7 @@ def add_prompt(name):
     mcp.prompt(name=name, description=f"Books {name}")(_prompt)
 
 
-for name in COMMANDS:
+for name in [*COMMANDS, *GENERATED]:
     add_prompt(name)
 
 
@@ -88,10 +110,11 @@ for name in COMMANDS:
 def command(name: str):
     """Answer a command typed as text, such as ``mcp_books_workflow``."""
     name = name.strip().lstrip("/").removeprefix("mcp__books__").removeprefix("mcp_books").lstrip("_") or "books"
-    if name not in COMMANDS and f"books_{name}" in COMMANDS:
+    known = [*COMMANDS, *GENERATED]
+    if name not in known and f"books_{name}" in known:
         name = f"books_{name}"
-    if name not in COMMANDS:
-        return "Reply with exactly this list, nothing added:\n\n" + "\n".join(f"mcp_books_{cmd}" for cmd in COMMANDS)
+    if name not in known:
+        return "Reply with exactly this list, nothing added:\n\n" + "\n".join(f"mcp_books_{cmd}" for cmd in known)
     return reply(name)
 
 
