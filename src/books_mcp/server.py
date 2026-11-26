@@ -88,7 +88,7 @@ RULE = (
     "mcp_books lists the commands: {}. "
     "For questions about the library, call get_book_guide once, then search_books and read_book_section; "
     "cite author, printed page and URL. When asked to list all BRG publications or papers, "
-    "call `command` with mcp_books_publications instead and repeat the result. To process a new scan, use the prompt books_process."
+    "call list_brg_publications and repeat the result. To process a new scan, use the prompt books_process."
 ).format(", ".join(f"mcp_books_{name}" for name in [*COMMANDS, "books_publications"]))
 
 mcp = FastMCP("books", instructions=RULE)
@@ -139,6 +139,13 @@ def get_book_guide(include_library_map: bool = True) -> dict:
     if include_library_map:
         result["library_map"] = books.library_map()
     return result
+
+
+@mcp.tool()
+def list_brg_publications() -> str:
+    """BRG publication list: all papers of the Block Research Group (ETH Zurich), by year, with authors, venue and links.
+    Use for any request for BRG publications, papers or the publication list. Repeat the result as Markdown, unchanged."""
+    return reply("books_publications")
 
 
 @mcp.tool()
